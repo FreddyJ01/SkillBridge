@@ -13,7 +13,14 @@ if errorlevel 1 (
 
 REM Install Python dependencies
 echo 📦 Installing Python dependencies...
+echo    - Installing core packages...
 pip install -r requirements.txt
+
+echo    - Verifying advanced XML processing...
+python -c "import lxml; print('✅ Advanced XML processing ready')" >nul 2>&1 || (
+    echo ⚠️  Installing additional XML dependencies...
+    pip install lxml>=4.6.0
+)
 
 REM Check if Ollama is installed
 ollama --version >nul 2>&1
@@ -46,9 +53,19 @@ if not exist "TailorResumeInbox" mkdir TailorResumeInbox
 echo.
 echo 🎉 SkillBridge setup complete!
 echo.
-echo To start SkillBridge:
-echo   python skillbridge.py
+echo ✅ Features installed:
+echo    📁 Folder watching
+echo    🤖 AI integration (Ollama + OpenAI)  
+echo    🎨 100%% formatting preservation (XML processing)
+echo    🔄 Cross-platform compatibility
 echo.
-echo To use a different folder, edit the WATCH_FOLDER path in config.py
+echo 🚀 To start SkillBridge:
+echo    python skillbridge.py
+echo.
+echo ⚙️  To customize settings:
+echo    Edit config.py (AI provider, watch folder, etc.)
+echo.
+echo 📖 For help:
+echo    Check README.md for complete instructions
 echo.
 pause

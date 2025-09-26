@@ -11,11 +11,19 @@ import time
 load_dotenv()
 
 class AIProvider:
-    """Handles AI communication with both Ollama and OpenAI"""
+    """Handles AI communication with Gemini, OpenAI, and Ollama"""
     
     def __init__(self):
         self.provider = AI_PROVIDER.lower()
         
+        if self.provider == "gemini":
+            api_key = os.getenv('GEMINI_API_KEY')
+            if not api_key:
+                print("⚠️  No Gemini API key found. Switching to OpenAI...")
+                self.provider = "openai"
+            else:
+                self.gemini_api_key = api_key
+                
         if self.provider == "openai":
             api_key = os.getenv('OPENAI_API_KEY')
             if not api_key:
@@ -68,9 +76,11 @@ Please tailor this resume for the job description above."""
 
         for attempt in range(MAX_RETRIES):
             try:
-                if self.provider == "ollama":
+                if self.provider == "gemini":
+                    return self._generate_gemini_response(user_message)
+                elif self.provider == "ollama":
                     return self._generate_ollama_response(user_message)
-                else:
+                else:  # openai
                     return self._generate_openai_response(user_message)
             except Exception as e:
                 print(f"⚠️  Attempt {attempt + 1} failed: {e}")
@@ -122,12 +132,69 @@ Please tailor this resume for the job description above."""
         
         return response.choices[0].message.content
     
+    def _generate_gemini_response(self, user_message: str) -> Optional[str]:
+        """Generate response using Google Gemini API"""
+        print("🤖 Processing with Gemini...")
+        
+        # Gemini API endpoint
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent?key={self.gemini_api_key}"
+        
+        # Prepare request data
+        data = {
+            "contents": [
+                {
+                    "parts": [
+                        {"text": SYSTEM_PROMPT + "\n\n" + user_message}
+                    ]
+                }
+            ],
+            "generationConfig": {
+                "temperature": 0.7,
+                "topK": 40,
+                "topP": 0.95,
+                "maxOutputTokens": 4000,
+            },
+            "safetySettings": [
+                {
+                    "category": "HARM_CATEGORY_HARASSMENT",
+                    "threshold": "BLOCK_MEDIUM_AND_ABOVE"
+                },
+                {
+                    "category": "HARM_CATEGORY_HATE_SPEECH", 
+                    "threshold": "BLOCK_MEDIUM_AND_ABOVE"
+                },
+                {
+                    "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                    "threshold": "BLOCK_MEDIUM_AND_ABOVE"
+                },
+                {
+                    "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+                    "threshold": "BLOCK_MEDIUM_AND_ABOVE"
+                }
+            ]
+        }
+        
+        # Make request
+        response = requests.post(url, json=data, timeout=TIMEOUT_SECONDS)
+        
+        if response.status_code == 200:
+            result = response.json()
+            if "candidates" in result and len(result["candidates"]) > 0:
+                candidate = result["candidates"][0]
+                if "content" in candidate and "parts" in candidate["content"]:
+                    return candidate["content"]["parts"][0]["text"]
+            raise Exception("No valid response from Gemini")
+        else:
+            raise Exception(f"Gemini API request failed: {response.status_code} - {response.text}")
+    
     def get_provider_info(self) -> str:
         """Get information about current AI provider"""
-        if self.provider == "ollama":
+        if self.provider == "gemini":
+            return f"🤖 Using Google Gemini ({GEMINI_MODEL}) - API"
+        elif self.provider == "ollama":
             if self.is_ollama_available():
                 return f"🤖 Using Ollama ({OLLAMA_MODEL}) - Free & Local"
             else:
                 return "❌ Ollama not available"
-        else:
+        else:  # openai
             return f"🤖 Using OpenAI ({OPENAI_MODEL}) - API"

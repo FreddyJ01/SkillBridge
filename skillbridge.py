@@ -1,6 +1,29 @@
 import os
 import time
 from pathlib import Path
+
+# Check and install dependencies first
+try:
+    from dependency_checker import check_and_install_dependencies, check_advanced_features
+    
+    print("🔍 Checking SkillBridge dependencies...")
+    deps_ok = check_and_install_dependencies()
+    
+    if not deps_ok:
+        print("\n❌ Dependency installation failed. Please run:")
+        print("   pip3 install -r requirements.txt")
+        print("\nOr use the setup script:")
+        print("   ./setup.sh (Mac/Linux) or setup.bat (Windows)")
+        exit(1)
+    
+    # Check advanced features
+    advanced_available, advanced_message = check_advanced_features()
+    print(f"\n{advanced_message}")
+    
+except ImportError:
+    print("⚠️  Dependency checker not available, assuming dependencies are installed...")
+
+# Import main modules
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 from colorama import init, Fore, Style
@@ -18,6 +41,7 @@ class ResumeWatcher(FileSystemEventHandler):
         self.watch_folder = Path(watch_folder)
         self.ai_provider = AIProvider()
         self.processing = False
+        self.processed_files = set()  # Track processed file combinations
         
         # Ensure watch folder exists
         self.watch_folder.mkdir(parents=True, exist_ok=True)
@@ -42,6 +66,17 @@ class ResumeWatcher(FileSystemEventHandler):
         time.sleep(1)
         self.check_and_process()
     
+    def on_deleted(self, event):
+        """Handle file deletion events - reset processed files when files are removed"""
+        if event.is_directory:
+            return
+        
+        file_name = Path(event.src_path).name
+        if file_name in ["JD.docx", "CurrentResume.docx"]:
+            # Reset processed files when either input file is deleted
+            self.processed_files.clear()
+            print(f"{Fore.YELLOW}🗑️  {file_name} removed - ready for new files{Style.RESET_ALL}")
+    
     def check_and_process(self):
         """Check if both required files exist and process them"""
         if self.processing:
@@ -54,6 +89,15 @@ class ResumeWatcher(FileSystemEventHandler):
         
         # Check if both files exist
         if jd_file.exists() and resume_file.exists():
+            # Create a unique identifier for this file combination
+            jd_modified = jd_file.stat().st_mtime
+            resume_modified = resume_file.stat().st_mtime
+            file_signature = f"{jd_modified}_{resume_modified}"
+            
+            # Check if we've already processed this exact combination
+            if file_signature in self.processed_files:
+                return  # Skip processing - already done
+            
             self.processing = True
             
             print(f"\n{Fore.GREEN}🚀 Both files detected! Starting resume tailoring...{Style.RESET_ALL}")
@@ -69,15 +113,19 @@ class ResumeWatcher(FileSystemEventHandler):
                 if not jd_content or not resume_content:
                     raise Exception("Could not extract text from one or both documents")
                 
+                print(f"{Fore.CYAN}📋 Original resume has {len(resume_content.split())} words{Style.RESET_ALL}")
+                
                 # Generate tailored resume
-                print(f"{Fore.BLUE}🤖 Tailoring resume with AI...{Style.RESET_ALL}")
+                print(f"{Fore.BLUE}🤖 Tailoring resume with AI (this may take 30-60 seconds)...{Style.RESET_ALL}")
                 tailored_content = self.ai_provider.generate_response(jd_content, resume_content)
                 
                 if not tailored_content:
                     raise Exception("AI failed to generate tailored resume content")
                 
-                # Create the tailored resume document
-                print(f"{Fore.BLUE}📝 Creating formatted resume...{Style.RESET_ALL}")
+                print(f"{Fore.CYAN}✨ AI generated {len(tailored_content.split())} words{Style.RESET_ALL}")
+                
+                # Create the tailored resume document with advanced formatting preservation
+                print(f"{Fore.BLUE}📝 Creating formatted resume with preserved styling...{Style.RESET_ALL}")
                 success = DocumentProcessor.create_tailored_resume(
                     str(resume_file),
                     tailored_content,
@@ -87,10 +135,12 @@ class ResumeWatcher(FileSystemEventHandler):
                 if success:
                     print(f"\n{Fore.GREEN}✅ SUCCESS! Tailored resume created: {OUTPUT_FILENAME}{Style.RESET_ALL}")
                     print(f"{Fore.GREEN}📁 Location: {output_file.absolute()}{Style.RESET_ALL}")
+                    print(f"{Fore.GREEN}🎨 Original formatting and styling preserved!{Style.RESET_ALL}")
                     
-                    # Clean up input files (optional)
-                    # jd_file.unlink()
-                    # resume_file.unlink()
+                    # Mark this file combination as processed
+                    self.processed_files.add(file_signature)
+                    
+                    print(f"\n{Fore.YELLOW}💡 To process again: remove and re-add at least one input file{Style.RESET_ALL}")
                     
                 else:
                     raise Exception("Failed to create tailored resume document")
@@ -107,7 +157,7 @@ class ResumeWatcher(FileSystemEventHandler):
             
             finally:
                 self.processing = False
-                print(f"\n{Fore.YELLOW}🔍 Ready for next files...{Style.RESET_ALL}")
+                print(f"\n{Fore.YELLOW}🔍 Ready for next files (remove and re-add to process again)...{Style.RESET_ALL}")
 
 def main():
     """Main function to start the file watcher"""
@@ -141,6 +191,7 @@ def main():
         print(f"{Fore.WHITE}2. Save your current resume as 'CurrentResume.docx'{Style.RESET_ALL}")
         print(f"{Fore.WHITE}3. Drop both files into: {watch_path}{Style.RESET_ALL}")
         print(f"{Fore.WHITE}4. Wait for 'TailoredResume.docx' to appear!{Style.RESET_ALL}")
+        print(f"{Fore.WHITE}5. To process again: remove and re-add at least one input file{Style.RESET_ALL}")
         print(f"\n{Fore.CYAN}Press Ctrl+C to stop watching...{Style.RESET_ALL}\n")
         
         while True:

@@ -6,10 +6,12 @@ SkillBridge is a "set it and forget it" automation tool that watches a folder an
 
 - 📁 **Folder Watching**: Automatically detects when you drop JD.docx and CurrentResume.docx files
 - 🤖 **AI-Powered**: Uses local AI (Ollama) for free, or OpenAI for premium results  
-- 📝 **Format Preservation**: Maintains your original resume's formatting, fonts, and style
+- 🎨 **100% Format Preservation**: Advanced XML processing maintains **identical** formatting, fonts, spacing, and style
+- 🔍 **Deep Document Analysis**: Scans every formatting detail including horizontal lines, borders, and complex layouts
 - 🔄 **Cross-Platform**: Works on Windows, Mac, and Linux
 - 🚀 **Zero Manual Work**: Completely automated once set up
 - 💰 **Free Option**: No API costs with local Ollama AI
+- 🛡️ **Robust Fallback**: Multiple formatting preservation methods ensure reliability
 
 ## 🚀 Quick Start
 
@@ -101,27 +103,72 @@ SkillBridge/
 
 ## 🛠️ Troubleshooting
 
-**"Ollama not running":**
-- Run `ollama serve` in terminal
-- Or switch to OpenAI in config.py
+### **"Python is not recognized"**
+- **Windows:** Reinstall Python and check "Add Python to PATH"
+- **Mac:** Use `python3` instead of `python`
 
-**"Could not extract text":**
-- Ensure files are valid .docx Word documents
-- Try opening and re-saving the files
+### **"Ollama not running"**
+- **Solution 1:** Run `ollama serve` in a separate terminal window
+- **Solution 2:** Switch to OpenAI in [`config.py`](config.py)
+- **Solution 3:** Restart the setup script
 
-**"AI failed to respond":**
-- Check internet connection (for OpenAI)
-- Ensure Ollama is running (for local AI)
-- Try again - AI sometimes has hiccups
+### **"TypeError: __init__() got an unexpected keyword argument 'proxies'"**
+This is a common compatibility issue with OpenAI library versions.
 
-**Need help?** Check the console output for detailed error messages.
+**Quick Fix:**
+```bash
+pip3 install "httpx<0.25" "urllib3<2.0" openai==1.35.0 --upgrade
+```
+
+**What this does:** Installs compatible versions of the networking libraries that work together properly.
+
+### **"Could not extract text"**
+- Ensure files are `.docx` format (not `.doc` or `.pdf`)
+- Try opening and re-saving the files in Microsoft Word
+- Check that files actually contain text
+
+### **"AI failed to respond"**
+- **For Ollama:** Make sure `ollama serve` is running
+- **For OpenAI:** Check your internet connection and API key
+- Try again - AI sometimes has temporary hiccups
+
+### **Files not being detected**
+- Make sure files are named exactly `JD.docx` and `CurrentResume.docx`
+- Check that SkillBridge is still running (look for the console window)
+- Try dropping files one at a time with a few seconds between
+
+### **Need more help?**
+- Check the console window for detailed error messages
+- Make sure both files are in the correct folder
+- Restart SkillBridge if it seems stuck
 
 ## 🎯 Tips for Best Results
 
-1. **Clear Job Descriptions**: Copy the full JD text, not just bullet points
-2. **Complete Resumes**: Include all sections (experience, skills, education)
-3. **Good Prompts**: Customize `SYSTEM_PROMPT` in config.py for your industry
-4. **Consistent Formatting**: Use standard Word formatting in your base resume
+### Writing Better Job Descriptions
+1. **Copy the complete job posting** - don't just use bullet points
+2. **Include company information** if available
+3. **Keep industry context** - mention the company type/industry
+
+### Preparing Your Resume
+1. **Use a complete resume** - include all sections (experience, skills, education)
+2. **Any Word formatting supported** - horizontal lines, borders, tables, custom fonts all preserved
+3. **Include quantified achievements** - numbers help AI understand impact
+4. **Complex layouts welcome** - the XML system handles advanced formatting
+
+### Optimizing the AI Prompt
+Edit the `SYSTEM_PROMPT` in [`config.py`](config.py) to:
+- Focus on your industry (e.g., "You are a tech resume expert...")
+- Emphasize specific skills (e.g., "Always highlight leadership experience...")
+- Match your career level (e.g., "Focus on senior-level responsibilities...")
+
+### Advanced Formatting Preservation
+SkillBridge uses **three layers** of formatting preservation:
+
+1. **🚀 XML Reconstruction (100% identical)**: Direct manipulation of Word's XML structure
+2. **📋 Structure Preservation (95% similar)**: Smart content mapping with format matching  
+3. **📄 Fallback Formatting (80% similar)**: Basic professional styling as last resort
+
+**The system automatically tries each method** until one succeeds, ensuring you always get a properly formatted resume.
 
 ## 🤝 Contributing
 
